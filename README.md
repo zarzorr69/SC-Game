@@ -8,19 +8,31 @@ This project is an *installer/configuration helper*, not a controller driver or 
 
 ## Quick start
 
+**One-line installer (Fish or Bash, Arch/CachyOS):**
+
 ```bash
-git clone https://github.com/YOUR_USER/sc-game.git
-cd sc-game
+curl -fsSLo sc-game-install.sh https://raw.githubusercontent.com/zarzorr69/SC-Game/master/install.sh && bash sc-game-install.sh
+```
+
+This downloads `install.sh` into the current directory before running it, so you can inspect it first. It also keeps standard input available for interactive prompts (unlike piping directly into `bash`). **Do not run the installer with `sudo`**; it requests elevated permissions only when needed.
+
+**Optional SSP reconnect workaround:** If your DualShock 4 pairs but immediately disconnects, use the installer downloaded above and explicitly opt in:
+
+```bash
+bash sc-game-install.sh --with-ssp-workaround
+```
+
+This requires typing `I ACCEPT` to acknowledge the adapter-wide Bluetooth security reduction. The `--yes` flag can bypass prompts for unattended installations; do not use it without understanding the implications.
+
+**Alternatively, clone the entire project** (including the status and uninstall scripts):
+
+```bash
+git clone https://github.com/zarzorr69/SC-Game.git
+cd SC-Game
 bash install.sh
 ```
 
-For DualShock 4 controllers that **pair but immediately disconnect** due to the Bluetooth SSP issue, explicitly opt in to the compatibility workaround:
-
-```bash
-bash install.sh --with-ssp-workaround
-```
-
-The script asks for an explicit security acknowledgement. `--yes` bypasses prompts for intentional unattended deployments; use it only if you understand the security implications. **Do not use `sudo bash install.sh`.** The installer invokes `sudo` only when required. From Fish, run the same `bash install.sh ...` commands.
+The one-liner only downloads the installer. Clone the repository if you also want to run `bash status.sh`, `bash uninstall.sh`, or review all documentation locally.
 
 ### Why SSP opt-in matters
 

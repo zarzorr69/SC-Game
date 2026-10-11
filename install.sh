@@ -2,7 +2,6 @@
 # SC-Game: persistent DualShock 4 -> virtual Xbox controllers on Arch/CachyOS.
 set -Eeuo pipefail
 
-PROGRAM='SC-Game'
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/sc-game"
 LEGACY_MARKER="# Managed by DualShock Anywhere"
 UNIT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
