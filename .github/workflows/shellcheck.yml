@@ -9,7 +9,13 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate syntax and scripts
         run: |
-          bash -n install.sh status.sh uninstall.sh
-          shellcheck --severity=warning install.sh status.sh uninstall.sh
+          bash -n install.sh status.sh uninstall.sh tests/test_installer.sh
+          shellcheck --severity=warning install.sh status.sh uninstall.sh tests/test_installer.sh
           bash install.sh --help
           bash uninstall.sh --help
+      - name: Validate Python TUI and tests
+        run: |
+          python3 -m py_compile sc-game.py
+          python3 -m unittest discover -s tests -v
+          python3 sc-game.py --help
+          bash tests/test_installer.sh

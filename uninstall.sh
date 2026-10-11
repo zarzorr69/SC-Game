@@ -5,6 +5,7 @@ set -Eeuo pipefail
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/sc-game"
 LEGACY_STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/dualshock-anywhere"
 UNIT_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/scc-daemon.service"
+TUI_TARGET="$HOME/.local/bin/sc-game"
 
 usage() {
   cat <<'USAGE'
@@ -47,4 +48,14 @@ else
   echo 'Existing btsspsw installation/service left untouched (not enabled by this installer).'
 fi
 
-echo 'Packages, user-created SC profiles, paired devices, and Steam/Lutris settings were not changed.'
+if [[ -f "$STATE_DIR/tui-installed-by-installer" ]]; then
+  if [[ -f "$TUI_TARGET" ]] && grep -Fq '# SC-Game TUI (managed installation)' "$TUI_TARGET"; then
+    rm -f "$TUI_TARGET"
+    echo 'Removed installer-managed sc-game terminal dashboard.'
+  else
+    echo 'TUI file has been changed or moved; preserved it.'
+  fi
+  rm -f "$STATE_DIR/tui-installed-by-installer"
+fi
+
+echo 'Packages, user-created SC profiles, paired devices, and Steam/Lutris settings were not changed.' 

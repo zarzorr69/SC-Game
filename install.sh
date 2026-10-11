@@ -6,6 +6,8 @@ STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/sc-game"
 LEGACY_MARKER="# Managed by DualShock Anywhere"
 UNIT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 UNIT_FILE="$UNIT_DIR/scc-daemon.service"
+TUI_TARGET="$HOME/.local/bin/sc-game"
+TUI_URL="https://raw.githubusercontent.com/zarzorr69/SC-Game/master/sc-game.py"
 WITH_SSP=false
 ASSUME_YES=false
 
@@ -49,7 +51,7 @@ systemctl --user show-environment >/dev/null 2>&1 || die 'A running systemd user
 
 log 'Checking packages (this may perform a complete pacman system upgrade if dependencies are missing)...'
 missing=()
-for package in bluez bluez-utils sc-controller evtest; do
+for package in bluez bluez-utils sc-controller evtest python; do
   pacman -Q "$package" >/dev/null 2>&1 || missing+=("$package")
 done
 if ((${#missing[@]})); then
@@ -151,6 +153,51 @@ fi
 
 printf '\n'
 log 'Installed and active! SC Controller service will start with your user session.'
+
+# Install the self-contained curses dashboard, if available locally. A
+# standalone curl bootstrap has only install.sh, so download the same source
+# from the official project when needed; failures do not break gamepad setup.
+SOURCE_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+TUI_SOURCE="$SOURCE_DIR/sc-game.py"
+DOWNLOADED_TUI=''
+if [[ ! -f "$TUI_SOURCE" ]]; then
+  if command -v curl >/dev/null 2>&1; then
+    log "Single-file install: downloading the SC-Game TUI from $TUI_URL"
+    DOWNLOADED_TUI="$(mktemp)"
+    if curl -fsSL --proto '=https' --tlsv1.2 "$TUI_URL" -o "$DOWNLOADED_TUI"; then
+      TUI_SOURCE="$DOWNLOADED_TUI"
+    else
+      warn 'Could not download the TUI; core controller services are still installed.'
+      TUI_SOURCE=''
+    fi
+  else
+    warn 'TUI source absent and curl is unavailable. Install from a full repository clone for the TUI.'
+    TUI_SOURCE=''
+  fi
+fi
+
+if [[ -n "$TUI_SOURCE" ]]; then
+  if [[ -e "$TUI_TARGET" ]] && ! grep -Fq '# SC-Game TUI (managed installation)' "$TUI_TARGET"; then
+    warn "Existing unrelated $TUI_TARGET was preserved; run python3 sc-game.py manually."
+  elif ! python3 - "$TUI_SOURCE" <<'PY_CHECK'
+import ast
+import pathlib
+import sys
+ast.parse(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+PY_CHECK
+  then
+    warn 'TUI Python syntax validation failed; leaving installed services untouched.'
+  else
+    mkdir -p "$(dirname -- "$TUI_TARGET")" "$STATE_DIR"
+    install -m 0755 "$TUI_SOURCE" "$TUI_TARGET"
+    : > "$STATE_DIR/tui-installed-by-installer"
+    log "Installed interactive terminal dashboard: $TUI_TARGET"
+    log 'Launch with: sc-game    |    Read-only output: sc-game --status'
+  fi
+fi
+if [[ -n "$DOWNLOADED_TUI" ]]; then
+  rm -f "$DOWNLOADED_TUI"
+fi
 log 'Connect each DS4 through Blueman (blueman-manager) or bluetoothctl, then trust it.'
 log 'Open: sc-controller  |  Enable DS4 support; select the XBox Controller profile for EACH controller.'
 log 'Steam: Settings > Controller > Advanced Settings; disable Steam Input for PlayStation, Xbox and Generic.'

@@ -2,7 +2,7 @@
 
 **DualShock 4 → virtual Xbox 360 gamepads across Steam, Lutris/Proton, Wine/UMU, and native Linux games.**
 
-A small Bash installer for **Arch Linux / CachyOS**, including Hyprland/Ryoku. Based on a tested two-controller setup using BlueZ, the [SC Controller](https://github.com/C0rn3j/sc-controller) GUI/backend, and an optional [btsspsw](https://github.com/VHSgunzo/btsspsw) Bluetooth workaround.
+A small Bash installer **plus a dependency-free Python curses TUI** for **Arch Linux / CachyOS**, including Hyprland/Ryoku. Based on a tested two-controller setup using BlueZ, the [SC Controller](https://github.com/C0rn3j/sc-controller) GUI/backend, and an optional [btsspsw](https://github.com/VHSgunzo/btsspsw) Bluetooth workaround.
 
 This project is an *installer/configuration helper*, not a controller driver or a replacement for either upstream project.
 
@@ -14,7 +14,7 @@ This project is an *installer/configuration helper*, not a controller driver or 
 curl -fsSLo sc-game-install.sh https://raw.githubusercontent.com/zarzorr69/SC-Game/master/install.sh && bash sc-game-install.sh
 ```
 
-This downloads `install.sh` into the current directory before running it, so you can inspect it first. It also keeps standard input available for interactive prompts (unlike piping directly into `bash`). **Do not run the installer with `sudo`**; it requests elevated permissions only when needed.
+This downloads `install.sh` into the current directory before running it, so you can inspect it first. The single-file installer downloads `sc-game.py` over HTTPS from this repository to install the TUI; cloning the full repository instead lets you review both scripts before installation. It also keeps standard input available for interactive prompts (unlike piping directly into `bash`). **Do not run the installer with `sudo`**; it requests elevated permissions only when needed.
 
 **Optional SSP reconnect workaround:** If your DualShock 4 pairs but immediately disconnects, use the installer downloaded above and explicitly opt in:
 
@@ -32,11 +32,36 @@ cd SC-Game
 bash install.sh
 ```
 
-The one-liner only downloads the installer. Clone the repository if you also want to run `bash status.sh`, `bash uninstall.sh`, or review all documentation locally.
+The one-liner downloads the installer, which also installs the TUI from this repository. Clone the repository if you want to run `bash status.sh`, `bash uninstall.sh`, or review all source files locally.
 
 ### Why SSP opt-in matters
 
 [btsspsw](https://github.com/VHSgunzo/btsspsw) toggles Bluetooth **Secure Simple Pairing (SSP)** adapter-wide: SSP ON while discovery is enabled, SSP OFF while discovery is disabled. The latter weakens Bluetooth Classic security for other devices as well. Only enable this if needed; revisit it after updates to BlueZ/kernel/controller firmware. The installer does not enable it by default.
+
+## Terminal dashboard (new in v1.1)
+
+Start the interactive TUI with:
+
+```bash
+sc-game
+```
+
+No extra Python packages are needed: it uses Python 3's built-in `curses` module. If your terminal does not support interactive mode, use `sc-game --status` for read-only text output. You can also launch the source directly with `python3 sc-game.py` from the repository directory before installing it.
+
+**TUI shortcuts** (use arrow keys to select a controller):
+
+| Key | Action |
+| --- | --- |
+| `B` / `G` | Open Blueman pairing GUI / SC Controller profile GUI |
+| `C` / `T` | Connect / trust the selected Bluetooth gamepad (asks for confirmation) |
+| `S` / `X` | Start and enable / temporarily stop the SC Controller user service |
+| `R` / `F` | Confirmed service restart / read-only status refresh |
+| `E` / `L` | Test input via `sudo evtest` / view SC Controller logs |
+| `?` / `Q` | Help / quit |
+
+The dashboard displays BlueZ, SC Controller, btsspsw, known controllers, and virtual Xbox devices. It only changes settings when you explicitly select an action. It **does not** turn off SSP or alter Steam/Lutris settings on its own. The TUI works under Fish and Bash because it runs as its own Python process; interactive control requires a terminal of at least 55×17 characters.
+
+The installer copies the TUI to `~/.local/bin/sc-game`, a conventional user executable location. If `sc-game` is not found after installing, ensure `~/.local/bin` is on your shell's PATH; you can also run `~/.local/bin/sc-game` directly. The uninstaller only removes the launcher if the installer created it.
 
 ## After installation (one-time GUI setup)
 
@@ -66,6 +91,8 @@ DS4 #1 + DS4 #2 over Bluetooth
 ## Commands
 
 ```bash
+sc-game                                   # Interactive terminal dashboard
+sc-game --status                          # Read-only terminal status
 bash status.sh                            # Read-only diagnostics
 systemctl --user status scc-daemon.service
 sc-controller                             # GUI for profiles
@@ -89,9 +116,10 @@ SC-Game is the new name for the original DualShock Anywhere installer. If you in
 
 ## Safety and reversibility
 
+- **TUI writes only on confirmed actions**; no silent Bluetooth reconnection, service restarting, Steam edits, or SSP changes.
 - **No automatic modification** of Steam VDF files, Lutris configs, existing Wine prefixes, Hyprland/QuickShell settings, or current Bluetooth pairings.
 - **No forced overwrite** of an unfamiliar existing `scc-daemon.service`. A compatible user unit is preserved; otherwise installation stops and asks for manual review.
-- `uninstall.sh` removes the project-created service only. If the SSP service was newly enabled by this installer, it also disables it and requests `btmgmt ssp on`; an SSP service previously enabled by the user is preserved. Installed packages remain because other apps may use them.
+- `uninstall.sh` removes the project-created service and TUI only when marked as installer-managed. If the SSP service was newly enabled by this installer, it also disables it and requests `btmgmt ssp on`; an SSP service previously enabled by the user is preserved. Installed packages remain because other apps may use them.
 - Bluetooth SSP changes can break or weaken security for other devices. For manual recovery: `sudo systemctl disable --now btsspsw.service` then `sudo btmgmt -i hci0 ssp on` (adapt adapter index).
 - Running the installation may do a full Arch package upgrade **if any required packages are missing** (`pacman -Syu --needed`). Resolve mirror issues in your distribution's mirror configuration rather than hardcoding a server.
 - AUR dependencies come from a third party. Review `btsspsw-bin`'s PKGBUILD. The repo does not vendor external binaries or patches.
